@@ -1,6 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as path from 'path';
+import * as parser from 'node-html-parser'
+
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
@@ -8,6 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// The command has been defined in the package.json file
 	// Now provide the implementation of the command with registerCommand
 	// The commandId parameter must match the command field in package.json
+	let output = vscode.window.createOutputChannel('Live Preview');
 	let disposable = vscode.commands.registerCommand('live-preview--web-.livePreview', () => {
 		if (vscode.window.activeTextEditor?.document?.languageId !== 'html') {
 			vscode.window.showErrorMessage('Live Preview only works on HTML files.');
@@ -25,7 +29,27 @@ export function activate(context: vscode.ExtensionContext) {
 			}
 		);
 
-		panel.webview.html = vscode.window.activeTextEditor.document.getText();
+		let p = parser.parse(vscode.window.activeTextEditor.document.getText());
+		const loadElements = (type: string) => {
+			p.getElementsByTagName(type).forEach(e => {
+				let attribute;
+				let link;
+				if(type === 'script') {
+					attribute = 'src';
+					link = e.attrs.src;
+				} else {
+					attribute = 'href';
+					link = e.attrs.href;
+				}
+				const onDiskPath = vscode.Uri.file(path.join('Hashim/Desktop/Coding/Websites/prim69.github.io', link));
+				e.setAttribute(attribute, onDiskPath.path);
+			});
+		}
+		loadElements('script');
+		loadElements('link');
+
+		panel.webview.html = p.toString();
+		output.appendLine(panel.webview.html);
 		vscode.workspace.onDidSaveTextDocument(document => {
 			panel.webview.html = document.getText();
 		});
